@@ -1,0 +1,33 @@
+{
+  "name": "job-pipeline",
+  "version": "1.0.0",
+  "description": "Automated Job Pipeline for B3 Fullstack Apprenticeship Outreach",
+  "main": "dist/index.js",
+  "type": "module",
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "check:quota": "tsx src/scripts/check-quota.ts",
+    "lint:fix": "prettier --write \"src/**/*.ts\" && eslint --fix \"src/**/*.ts\"",
+    "db:validate": "tsx src/scripts/db-validate.ts",
+    "db:init": "tsx src/scripts/db-init.ts",
+    "env:verify": "tsx src/scripts/env-verify.ts"
+  },
+  "dependencies": {
+    "axios": "^1.7.2",
+    "dotenv": "^16.4.5",
+    "googleapis": "^140.0.0",
+    "playwright": "^1.45.0",
+    "sqlite3": "^5.1.7",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@types/node": "^20.14.9",
+    "@typescript-eslint/eslint-plugin": "^7.14.1",
+    "@typescript-eslint/parser": "^7.14.1",
+    "eslint": "^8.57.0",
+    "prettier": "^3.3.2",
+    "tsx": "^4.16.0",
+    "typescript": "^5.5.2"
+  }
+}
