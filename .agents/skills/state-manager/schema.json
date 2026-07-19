@@ -1,0 +1,30 @@
+{
+  "tableName": "jobs",
+  "columns": {
+    "hashId": { "type": "TEXT", "primaryKey": true },
+    "jobTitle": { "type": "TEXT", "notNull": true },
+    "companyName": { "type": "TEXT", "notNull": true },
+    "url": { "type": "TEXT", "notNull": true, "unique": true },
+    "status": {
+      "type": "TEXT",
+      "notNull": true,
+      "default": "NEW",
+      "enum": [
+        "NEW",
+        "FILTERING",
+        "APPROVED_BY_ZAI",
+        "REJECTED_BY_ZAI",
+        "PROMPT_GENERATED",
+        "READY_FOR_HUMAN",
+        "SENT",
+        "HUMAN_ABORTED",
+        "ERROR_SCRAPING",
+        "ERROR_EMAIL"
+      ]
+    },
+    "rejectionReason": { "type": "TEXT", "nullable": true },
+    "generatedPrompt": { "type": "TEXT", "nullable": true },
+    "createdAt": { "type": "DATETIME", "default": "CURRENT_TIMESTAMP" },
+    "updatedAt": { "type": "DATETIME", "default": "CURRENT_TIMESTAMP" }
+  }
+}

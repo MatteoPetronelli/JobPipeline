@@ -1,0 +1,27 @@
+{
+  "targetProfile": {
+    "level": "B3 (Bac+3)",
+    "specialty": "Fullstack (TypeScript, Node.js, React)",
+    "year": "2026-2027",
+    "contractDuration": "12 mois"
+  },
+  "hardExclusions": [
+    "Master",
+    "Bac+5",
+    "Bac+4",
+    "M1",
+    "M2",
+    "École d'ingénieur (fin d'études)",
+    "Stage",
+    "CDI",
+    "PHP",
+    "Symfony",
+    "OpenClassrooms",
+    "Simplon",
+    "Epitech (sauf si entreprise direct)"
+  ],
+  "scoringRules": {
+    "mustHave": ["Apprentissage", "Développement", "Web"],
+    "niceToHave": ["TypeScript", "Node.js", "Vue.js", "React"]
+  }
+}
