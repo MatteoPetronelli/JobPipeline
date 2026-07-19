@@ -11,23 +11,29 @@
     "lint:fix": "prettier --write \"src/**/*.ts\" && eslint --fix \"src/**/*.ts\"",
     "db:validate": "tsx src/scripts/db-validate.ts",
     "db:init": "tsx src/scripts/db-init.ts",
-    "env:verify": "tsx src/scripts/env-verify.ts"
+    "env:verify": "tsx src/scripts/env-verify.ts",
+    "pipeline": "tsx src/scripts/run-pipeline.ts"
   },
   "dependencies": {
-    "axios": "^1.7.2",
-    "dotenv": "^16.4.5",
-    "googleapis": "^140.0.0",
-    "playwright": "^1.45.0",
-    "sqlite3": "^5.1.7",
-    "zod": "^3.23.8"
+    "axios": "^1.18.1",
+    "dotenv": "^17.4.2",
+    "googleapis": "^173.0.0",
+    "playwright": "^1.61.1",
+    "playwright-extra": "^4.3.6",
+    "puppeteer-extra-plugin-stealth": "^2.11.2",
+    "sqlite3": "^6.0.1",
+    "zod": "^4.4.3"
   },
   "devDependencies": {
-    "@types/node": "^20.14.9",
-    "@typescript-eslint/eslint-plugin": "^7.14.1",
-    "@typescript-eslint/parser": "^7.14.1",
-    "eslint": "^8.57.0",
-    "prettier": "^3.3.2",
-    "tsx": "^4.16.0",
-    "typescript": "^5.5.2"
+    "@eslint/js": "^10.0.1",
+    "@types/node": "^26.1.1",
+    "@typescript-eslint/eslint-plugin": "^8.64.1-alpha.11",
+    "@typescript-eslint/parser": "^8.64.1-alpha.11",
+    "eslint": "^10.7.0",
+    "globals": "^17.7.0",
+    "prettier": "^3.9.5",
+    "tsx": "^4.23.1",
+    "typescript": "^6.0.3",
+    "typescript-eslint": "^8.64.1-alpha.11"
   }
 }

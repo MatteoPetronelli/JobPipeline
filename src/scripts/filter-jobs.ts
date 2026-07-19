@@ -63,7 +63,7 @@ const run = async () => {
         await engine.persistJobStatus(result.id, item.offer, status, reason);
       }
     }
-  } catch (error) {
+  } catch {
     process.exit(1);
   } finally {
     await closeDb();
