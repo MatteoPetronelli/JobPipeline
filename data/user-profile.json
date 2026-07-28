@@ -1,0 +1,52 @@
+{
+  "targetRoles": [
+    "Développeur Web",
+    "Développeur Fullstack",
+    "Développeur Frontend",
+    "Développeur Backend",
+    "Développeur React",
+    "Développeur Node.js"
+  ],
+  "contractTypes": [
+    "ALTERNANCE",
+    "Apprentissage",
+    "Professionnalisation"
+  ],
+  "locations": [
+    "Paris",
+    "Île-de-France",
+    "Remote",
+    "Télétravail"
+  ],
+  "skills": {
+    "react": 10,
+    "javascript": 10,
+    "node.js": 10,
+    "typescript": 8,
+    "next.js": 8,
+    "python": 8,
+    "fastapi": 7,
+    "docker": 7,
+    "postgresql": 7,
+    "vite": 9,
+    "tailwindcss": 7,
+    "svelte": 6,
+    "java": 5,
+    "c#": 5,
+    ".net": 5,
+    "go": 4,
+    "github actions": 7,
+    "ci/cd": 7
+  },
+  "blacklistedCompanies": [],
+  "blacklistedKeywords": [
+    "senior",
+    "lead",
+    "architecte",
+    "manager",
+    "cdi",
+    "freelance",
+    "5 ans",
+    "3 ans"
+  ]
+}

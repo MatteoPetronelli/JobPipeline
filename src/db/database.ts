@@ -41,3 +41,45 @@ export const closeDb = (): Promise<void> => {
     });
   });
 };
+
+export const initAuditTable = async (): Promise<void> => {
+  await dbRun(`
+    CREATE TABLE IF NOT EXISTS pipeline_runs (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      executedAt TEXT,
+      scrapedCount INTEGER,
+      approvedCount INTEGER,
+      status TEXT,
+      errorMessage TEXT
+    )
+  `);
+};
+
+export const createPipelineRun = async (
+  executedAt: string,
+  status: string,
+): Promise<number> => {
+  return new Promise((resolve, reject) => {
+    db.run(
+      "INSERT INTO pipeline_runs (executedAt, scrapedCount, approvedCount, status, errorMessage) VALUES (?, 0, 0, ?, NULL)",
+      [executedAt, status],
+      function (err) {
+        if (err) reject(err);
+        else resolve(this.lastID);
+      },
+    );
+  });
+};
+
+export const updatePipelineRun = async (
+  id: number,
+  scrapedCount: number,
+  approvedCount: number,
+  status: string,
+  errorMessage?: string,
+): Promise<void> => {
+  await dbRun(
+    "UPDATE pipeline_runs SET scrapedCount = ?, approvedCount = ?, status = ?, errorMessage = ? WHERE id = ?",
+    [scrapedCount, approvedCount, status, errorMessage || null, id],
+  );
+};

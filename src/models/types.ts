@@ -12,3 +12,13 @@ export interface ZaiFilterResponse {
     reason: string;
   }[];
 }
+
+export interface JobOffer {
+  url: string;
+  jobTitle: string;
+  companyName: string;
+  rawDescription: string;
+  status?: string;
+  hashId?: string;
+  score?: number;
+}
