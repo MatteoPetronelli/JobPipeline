@@ -5,3 +5,10 @@ dist/
 .credentials/
 .backups/
 .logs/
+
+# Next.js
+.next/
+out/
+build/
+next-env.d.ts
+.vercel/
