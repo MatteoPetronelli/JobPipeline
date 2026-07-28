@@ -5,6 +5,7 @@ dist/
 .credentials/
 .backups/
 .logs/
+*.tsbuildinfo
 
 # Next.js
 .next/
