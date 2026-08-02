@@ -45,6 +45,106 @@ export class JobScraperService {
     }
   }
 
+  private extractLdJsonDescription(scripts: (string | null)[]): string {
+    for (const scriptContent of scripts) {
+      if (!scriptContent) continue;
+      try {
+        const data = JSON.parse(scriptContent) as unknown;
+        if (typeof data === "object" && data !== null) {
+          const record = data as Record<string, unknown>;
+          if (
+            record["@type"] === "JobPosting" &&
+            typeof record.description === "string"
+          ) {
+            return record.description;
+          }
+        }
+        if (Array.isArray(data)) {
+          for (const item of data) {
+            if (typeof item === "object" && item !== null) {
+              const record = item as Record<string, unknown>;
+              if (
+                record["@type"] === "JobPosting" &&
+                typeof record.description === "string"
+              ) {
+                return record.description;
+              }
+            }
+          }
+        }
+      } catch {
+        // ignore
+      }
+    }
+    return "";
+  }
+
+  private findWttjJobsNextData(obj: unknown, results: Job[]): void {
+    if (!obj || typeof obj !== "object") return;
+    if (Array.isArray(obj)) {
+      for (const item of obj) {
+        this.findWttjJobsNextData(item, results);
+      }
+      return;
+    }
+
+    const record = obj as Record<string, unknown>;
+    if (
+      typeof record.slug === "string" &&
+      typeof record.name === "string" &&
+      typeof record.organization === "object" &&
+      record.organization !== null
+    ) {
+      const org = record.organization as Record<string, unknown>;
+      if (typeof org.name === "string" && typeof org.slug === "string") {
+        const fullUrl = `https://www.welcometothejungle.com/fr/companies/${org.slug}/jobs/${record.slug}`;
+
+        let locationText = undefined;
+        if (typeof record.office === "object" && record.office !== null) {
+          locationText = (record.office as Record<string, unknown>)
+            .name as string;
+        }
+
+        results.push({
+          jobTitle: record.name.trim(),
+          companyName: org.name.trim(),
+          location: locationText?.trim(),
+          contractType: "Inconnu",
+          url: fullUrl,
+          rawDescription: "",
+        });
+        return;
+      }
+    }
+
+    for (const key of Object.keys(record)) {
+      this.findWttjJobsNextData(record[key], results);
+    }
+  }
+
+  private findWttjDescriptionNextData(obj: unknown): string {
+    if (!obj || typeof obj !== "object") return "";
+    if (Array.isArray(obj)) {
+      for (const item of obj) {
+        const res = this.findWttjDescriptionNextData(item);
+        if (res) return res;
+      }
+      return "";
+    }
+    const record = obj as Record<string, unknown>;
+    if (
+      typeof record.description === "string" &&
+      record.description.length > 50
+    ) {
+      return record.description;
+    }
+    for (const key of Object.keys(record)) {
+      const res = this.findWttjDescriptionNextData(record[key]);
+      if (res) return res;
+    }
+    return "";
+  }
+
   public async scrapeIndeed(
     searchQuery: string,
     maxPages: number,
@@ -73,7 +173,9 @@ export class JobScraperService {
 
       await this.page.waitForTimeout(2000);
 
-      const jobCards = await this.page.$$("div.job_seen_beacon");
+      const jobCards = await this.page.$$(
+        'a[id^="job_"], div.job_seen_beacon, td.resultContent',
+      );
       if (jobCards.length === 0) {
         break;
       }
@@ -81,29 +183,35 @@ export class JobScraperService {
       for (const card of jobCards) {
         try {
           const titleElement = await card.$(
-            'h2.jobTitle span, [role="heading"] span',
+            'h2.jobTitle span, h2.jobTitle, [role="heading"] span',
           );
           const titleText = await titleElement?.textContent();
-          if (!titleText) {
-            console.warn("[SELECTOR_DEPRECATED]");
-            continue;
-          }
 
           const companyElement = await card.$(
-            'span[data-testid="company-name"], [data-company-name="true"]',
+            'span[data-testid="company-name"], [data-company-name="true"], span.companyName',
           );
           const companyText = await companyElement?.textContent();
 
           const locationElement = await card.$(
-            'div[data-testid="text-location"], [data-testid="location"]',
+            'div[data-testid="text-location"], [data-testid="location"], div.companyLocation',
           );
           const locationText = await locationElement?.textContent();
 
-          const linkElement = await card.$("a.jcs-JobTitle, a[data-jk]");
+          let linkElement = await card.$("a.jcs-JobTitle, a[data-jk]");
+          if (!linkElement) {
+            const tagName = await card.evaluate((el) =>
+              el.tagName.toLowerCase(),
+            );
+            if (tagName === "a") {
+              linkElement = card;
+            }
+          }
           const href = await linkElement?.getAttribute("href");
 
           if (!titleText || !companyText || !href) {
-            console.warn("[SELECTOR_DEPRECATED]");
+            console.warn(
+              `[SELECTOR_DEPRECATED] Indeed: title=${!!titleText}, company=${!!companyText}, href=${!!href}`,
+            );
             continue;
           }
 
@@ -120,7 +228,10 @@ export class JobScraperService {
             rawDescription: "",
           });
         } catch (error) {
-          console.error("ERROR_SCRAPING", error);
+          console.error(
+            "ERROR_SCRAPING",
+            error instanceof Error ? error.message : String(error),
+          );
         }
       }
 
@@ -140,10 +251,18 @@ export class JobScraperService {
           break;
         }
 
-        const descriptionElement = await this.page.$(
-          '#jobDescriptionText, [class*="job-description"], div[data-testid="jobDescriptionText"]',
+        const ldJsonScripts = await this.page.$$eval(
+          'script[type="application/ld+json"]',
+          (scripts) => scripts.map((s) => s.textContent),
         );
-        const rawDescription = await descriptionElement?.textContent();
+        let rawDescription = this.extractLdJsonDescription(ldJsonScripts);
+
+        if (!rawDescription) {
+          const descriptionElement = await this.page.$(
+            '#jobDescriptionText, [class*="job-description"], div[data-testid="jobDescriptionText"]',
+          );
+          rawDescription = (await descriptionElement?.textContent()) || "";
+        }
 
         if (rawDescription) {
           const text = rawDescription.trim();
@@ -162,7 +281,10 @@ export class JobScraperService {
           });
         }
       } catch (error) {
-        console.error("ERROR_SCRAPING_DESCRIPTION", error);
+        console.error(
+          "ERROR_SCRAPING_DESCRIPTION",
+          error instanceof Error ? error.message : String(error),
+        );
       }
     }
 
@@ -197,58 +319,79 @@ export class JobScraperService {
 
       await this.page.waitForTimeout(3000);
 
-      const jobCards = await this.page.$$(
-        'li[data-testid="search-results-list-item-wrapper"], li[class*="ais-Hits-item"]',
-      );
-      if (jobCards.length === 0) {
-        break;
+      const nextDataStr = await this.page.evaluate(() => {
+        const el = document.getElementById("__NEXT_DATA__");
+        return el ? el.textContent : null;
+      });
+
+      const currentJobsCount = jobs.length;
+
+      if (nextDataStr) {
+        try {
+          const nextData = JSON.parse(nextDataStr) as unknown;
+          this.findWttjJobsNextData(nextData, jobs);
+        } catch {
+          // ignore
+        }
       }
 
-      for (const card of jobCards) {
-        try {
-          const titleElement = await card.$(
-            'h4, [data-testid="job-card-title"], [role="heading"]',
-          );
-          const titleText = await titleElement?.textContent();
+      if (jobs.length === currentJobsCount) {
+        const jobCards = await this.page.$$(
+          'article, div[data-testid="search-results-list-item-wrapper"], li[data-testid="search-results-list-item-wrapper"], li[class*="ais-Hits-item"]',
+        );
 
-          if (!titleText) {
-            console.warn("[SELECTOR_DEPRECATED]");
-            continue;
+        for (const card of jobCards) {
+          try {
+            const titleElement = await card.$(
+              'h4, [data-testid="job-card-title"], [role="heading"]',
+            );
+            const titleText = await titleElement?.textContent();
+
+            const companyElement = await card.$(
+              'span[data-testid="job-card-company"], [class*="company"]',
+            );
+            const companyText = await companyElement?.textContent();
+
+            const locationElement = await card.$(
+              'span[data-testid="job-card-location"], [class*="location"]',
+            );
+            const locationText = await locationElement?.textContent();
+
+            const linkElement = await card.$('a[href*="/jobs/"], a');
+            const href = await linkElement?.getAttribute("href");
+
+            if (!titleText || !companyText || !href) {
+              console.warn(
+                `[SELECTOR_DEPRECATED] WTTJ: title=${!!titleText}, company=${!!companyText}, href=${!!href}`,
+              );
+              continue;
+            }
+
+            const fullUrl = href.startsWith("http")
+              ? href
+              : `https://www.welcometothejungle.com${
+                  href.startsWith("/") ? "" : "/"
+                }${href}`;
+
+            jobs.push({
+              jobTitle: titleText.trim(),
+              companyName: companyText.trim(),
+              location: locationText?.trim(),
+              contractType: "Inconnu",
+              url: fullUrl,
+              rawDescription: "",
+            });
+          } catch (error) {
+            console.error(
+              "ERROR_SCRAPING",
+              error instanceof Error ? error.message : String(error),
+            );
           }
-
-          const companyElement = await card.$(
-            'span[data-testid="job-card-company"], [class*="company"]',
-          );
-          const companyText = await companyElement?.textContent();
-
-          const locationElement = await card.$(
-            'span[data-testid="job-card-location"], [class*="location"]',
-          );
-          const locationText = await locationElement?.textContent();
-
-          const linkElement = await card.$("a");
-          const href = await linkElement?.getAttribute("href");
-
-          if (!titleText || !companyText || !href) {
-            console.warn("[SELECTOR_DEPRECATED]");
-            continue;
-          }
-
-          const fullUrl = href.startsWith("http")
-            ? href
-            : `https://www.welcometothejungle.com${href}`;
-
-          jobs.push({
-            jobTitle: titleText.trim(),
-            companyName: companyText.trim(),
-            location: locationText?.trim(),
-            contractType: "Inconnu",
-            url: fullUrl,
-            rawDescription: "",
-          });
-        } catch (error) {
-          console.error("ERROR_SCRAPING", error);
         }
+      }
+
+      if (jobs.length === currentJobsCount) {
+        break;
       }
 
       currentPage++;
@@ -269,10 +412,35 @@ export class JobScraperService {
 
         await this.page.waitForTimeout(1000);
 
-        const descriptionElement = await this.page.$(
-          '[data-testid="job-section-description"], [class*="description"]',
+        let rawDescription = "";
+
+        const ldJsonScripts = await this.page.$$eval(
+          'script[type="application/ld+json"]',
+          (scripts) => scripts.map((s) => s.textContent),
         );
-        const rawDescription = await descriptionElement?.textContent();
+        rawDescription = this.extractLdJsonDescription(ldJsonScripts);
+
+        if (!rawDescription) {
+          const nextDataStr = await this.page.evaluate(() => {
+            const el = document.getElementById("__NEXT_DATA__");
+            return el ? el.textContent : null;
+          });
+          if (nextDataStr) {
+            try {
+              const nextData = JSON.parse(nextDataStr) as unknown;
+              rawDescription = this.findWttjDescriptionNextData(nextData);
+            } catch {
+              // ignore
+            }
+          }
+        }
+
+        if (!rawDescription) {
+          const descriptionElement = await this.page.$(
+            '[data-testid="job-section-description"], [class*="description"]',
+          );
+          rawDescription = (await descriptionElement?.textContent()) || "";
+        }
 
         if (rawDescription) {
           const text = rawDescription.trim();
@@ -291,7 +459,10 @@ export class JobScraperService {
           });
         }
       } catch (error) {
-        console.error("ERROR_SCRAPING_DESCRIPTION", error);
+        console.error(
+          "ERROR_SCRAPING_DESCRIPTION",
+          error instanceof Error ? error.message : String(error),
+        );
       }
     }
 
