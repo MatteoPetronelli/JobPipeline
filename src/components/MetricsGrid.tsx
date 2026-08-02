@@ -26,6 +26,11 @@ export default function MetricsGrid({
       value: metrics.rejected,
       color: "text-red-600 dark:text-red-400",
     },
+    {
+      label: "Needs Follow-up",
+      value: metrics.needsFollowup,
+      color: "text-orange-600 dark:text-orange-400",
+    },
   ];
 
   return (

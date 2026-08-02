@@ -43,6 +43,12 @@ export default function JobsTable({
             Interview
           </span>
         );
+      case "NEEDS_FOLLOWUP":
+        return (
+          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200">
+            Needs Follow-up
+          </span>
+        );
       case "ARCHIVED":
         return (
           <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-slate-200 text-slate-800 dark:bg-slate-700 dark:text-slate-300">

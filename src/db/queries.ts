@@ -6,6 +6,7 @@ export interface DashboardStats {
   approved: number;
   rejected: number;
   pending: number;
+  needsFollowup: number;
 }
 
 export interface JobRow extends Pick<Job, "jobTitle" | "companyName" | "url"> {
@@ -23,17 +24,19 @@ export const getDashboardStats = async (): Promise<DashboardStats> => {
     approved: number;
     rejected: number;
     pending: number;
+    needsFollowup: number;
   }>(`
     SELECT
       CAST(COUNT(*) AS INTEGER) as total,
       CAST(SUM(CASE WHEN status = 'APPROVED' THEN 1 ELSE 0 END) AS INTEGER) as approved,
       CAST(SUM(CASE WHEN status = 'REJECTED' THEN 1 ELSE 0 END) AS INTEGER) as rejected,
-      CAST(SUM(CASE WHEN status IN ('NEW', 'PENDING') THEN 1 ELSE 0 END) AS INTEGER) as pending
+      CAST(SUM(CASE WHEN status IN ('NEW', 'PENDING') THEN 1 ELSE 0 END) AS INTEGER) as pending,
+      CAST(SUM(CASE WHEN status = 'NEEDS_FOLLOWUP' THEN 1 ELSE 0 END) AS INTEGER) as needsFollowup
     FROM jobs
   `);
 
   if (!result) {
-    return { total: 0, approved: 0, rejected: 0, pending: 0 };
+    return { total: 0, approved: 0, rejected: 0, pending: 0, needsFollowup: 0 };
   }
 
   return {
@@ -41,6 +44,7 @@ export const getDashboardStats = async (): Promise<DashboardStats> => {
     approved: result.approved || 0,
     rejected: result.rejected || 0,
     pending: result.pending || 0,
+    needsFollowup: result.needsFollowup || 0,
   };
 };
 
@@ -77,15 +81,30 @@ export const updateJobStatus = async (
   status: string,
   rejectionReason?: string,
 ): Promise<void> => {
-  if (rejectionReason !== undefined) {
-    await dbRun(
-      "UPDATE jobs SET status = ?, rejectionReason = ?, updatedAt = CURRENT_TIMESTAMP WHERE hashId = ?",
-      [status, rejectionReason, id],
-    );
+  if (status === "APPLIED") {
+    const now = new Date().toISOString();
+    if (rejectionReason !== undefined) {
+      await dbRun(
+        "UPDATE jobs SET status = ?, rejectionReason = ?, updatedAt = CURRENT_TIMESTAMP, appliedAt = COALESCE(appliedAt, ?) WHERE hashId = ?",
+        [status, rejectionReason, now, id],
+      );
+    } else {
+      await dbRun(
+        "UPDATE jobs SET status = ?, updatedAt = CURRENT_TIMESTAMP, appliedAt = COALESCE(appliedAt, ?) WHERE hashId = ?",
+        [status, now, id],
+      );
+    }
   } else {
-    await dbRun(
-      "UPDATE jobs SET status = ?, updatedAt = CURRENT_TIMESTAMP WHERE hashId = ?",
-      [status, id],
-    );
+    if (rejectionReason !== undefined) {
+      await dbRun(
+        "UPDATE jobs SET status = ?, rejectionReason = ?, updatedAt = CURRENT_TIMESTAMP WHERE hashId = ?",
+        [status, rejectionReason, id],
+      );
+    } else {
+      await dbRun(
+        "UPDATE jobs SET status = ?, updatedAt = CURRENT_TIMESTAMP WHERE hashId = ?",
+        [status, id],
+      );
+    }
   }
 };

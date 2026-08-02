@@ -53,6 +53,18 @@ export const initAuditTable = async (): Promise<void> => {
       errorMessage TEXT
     )
   `);
+
+  try {
+    await dbRun("ALTER TABLE jobs ADD COLUMN appliedAt TEXT");
+  } catch (e) {
+    String(e);
+  }
+
+  try {
+    await dbRun("ALTER TABLE jobs ADD COLUMN lastFollowupNotifiedAt TEXT");
+  } catch (e) {
+    String(e);
+  }
 };
 
 export const createPipelineRun = async (

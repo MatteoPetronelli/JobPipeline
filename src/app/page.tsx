@@ -9,7 +9,7 @@ export default async function DashboardPage() {
     `SELECT * FROM jobs ORDER BY createdAt DESC LIMIT 500`,
   );
 
-  const [totalResult, approvedResult, rejectedResult, pendingResult] =
+  const [totalResult, approvedResult, rejectedResult, pendingResult, followupResult] =
     await Promise.all([
       dbAll<{ count: number }>("SELECT COUNT(*) as count FROM jobs"),
       dbAll<{ count: number }>(
@@ -21,6 +21,9 @@ export default async function DashboardPage() {
       dbAll<{ count: number }>(
         "SELECT COUNT(*) as count FROM jobs WHERE status = 'PENDING_REVIEW'",
       ),
+      dbAll<{ count: number }>(
+        "SELECT COUNT(*) as count FROM jobs WHERE status = 'NEEDS_FOLLOWUP'",
+      ),
     ]);
 
   const metrics: DashboardMetrics = {
@@ -28,6 +31,7 @@ export default async function DashboardPage() {
     approved: approvedResult[0]?.count || 0,
     rejected: rejectedResult[0]?.count || 0,
     pending: pendingResult[0]?.count || 0,
+    needsFollowup: followupResult[0]?.count || 0,
   };
 
   return (

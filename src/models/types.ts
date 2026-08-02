@@ -13,12 +13,25 @@ export interface ZaiFilterResponse {
   }[];
 }
 
+export type JobStatus =
+  | "NEW"
+  | "PENDING_REVIEW"
+  | "APPROVED_BY_ZAI"
+  | "REJECTED_BY_CODE"
+  | "HIGH_MATCH"
+  | "APPLIED"
+  | "INTERVIEW"
+  | "OFFER"
+  | "ARCHIVED"
+  | "NEEDS_FOLLOWUP"
+  | string;
+
 export interface JobOffer {
   url: string;
   jobTitle: string;
   companyName: string;
   rawDescription: string;
-  status?: string;
+  status?: JobStatus;
   hashId?: string;
   score?: number;
 }

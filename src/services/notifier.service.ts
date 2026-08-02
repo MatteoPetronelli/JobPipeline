@@ -13,21 +13,40 @@ export async function sendJobNotification(offers: JobOffer[]): Promise<void> {
   }
 
   const validOffers = offers.filter(
-    (o) => o.status === "HIGH_MATCH" || o.status === "APPROVED_BY_ZAI",
+    (o) =>
+      o.status === "HIGH_MATCH" ||
+      o.status === "APPROVED_BY_ZAI" ||
+      o.status === "NEEDS_FOLLOWUP",
   );
 
   for (const offer of validOffers) {
-    const payload = {
-      content: `New Match: ${offer.jobTitle} at ${offer.companyName}`,
-      embeds: [
-        {
-          title: offer.jobTitle,
-          url: offer.url,
-          description: `Score: ${offer.score ?? "N/A"} - Status: ${offer.status}`,
-          color: 3447003,
-        },
-      ],
-    };
+    let payload;
+
+    if (offer.status === "NEEDS_FOLLOWUP") {
+      payload = {
+        content: `Follow-up Required: ${offer.jobTitle} at ${offer.companyName}`,
+        embeds: [
+          {
+            title: offer.jobTitle,
+            url: offer.url,
+            description: `This application has been in APPLIED status for 7 or more days. Time to send a follow-up!\nStatus: ${offer.status}`,
+            color: 15105570,
+          },
+        ],
+      };
+    } else {
+      payload = {
+        content: `New Match: ${offer.jobTitle} at ${offer.companyName}`,
+        embeds: [
+          {
+            title: offer.jobTitle,
+            url: offer.url,
+            description: `Score: ${offer.score ?? "N/A"} - Status: ${offer.status}`,
+            color: 3447003,
+          },
+        ],
+      };
+    }
 
     if (discordUrl) {
       try {

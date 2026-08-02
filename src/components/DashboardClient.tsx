@@ -27,7 +27,8 @@ export default function DashboardClient({
       activeTab === "ALL" ||
       (activeTab === "APPROVED" && job.status === "APPROVED_BY_ZAI") ||
       (activeTab === "PENDING" && job.status === "PENDING_REVIEW") ||
-      (activeTab === "REJECTED" && job.status === "REJECTED_BY_CODE");
+      (activeTab === "REJECTED" && job.status === "REJECTED_BY_CODE") ||
+      (activeTab === "FOLLOWUP" && job.status === "NEEDS_FOLLOWUP");
 
     return matchesSearch && matchesTab;
   });
@@ -42,7 +43,7 @@ export default function DashboardClient({
 
       <div className="flex flex-col xl:flex-row gap-4 justify-between items-center bg-white dark:bg-slate-900 p-4 rounded-lg shadow-sm border border-slate-200 dark:border-slate-800">
         <div className="flex flex-wrap gap-2">
-          {["ALL", "APPROVED", "PENDING", "REJECTED"].map((tab) => (
+          {["ALL", "APPROVED", "PENDING", "REJECTED", "FOLLOWUP"].map((tab) => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}

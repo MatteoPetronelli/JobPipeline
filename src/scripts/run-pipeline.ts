@@ -7,6 +7,7 @@ import {
 import { getFilteredOffers, updateJobStatus } from "../db/queries.js";
 import { calculateMatchScore } from "../services/matcher.service.js";
 import { sendJobNotification } from "../services/notifier.service.js";
+import { checkAndFlagFollowups } from "../services/followup.service.js";
 import type { JobOffer } from "../models/types.js";
 
 export async function runPipeline(): Promise<void> {
@@ -68,6 +69,9 @@ export async function runPipeline(): Promise<void> {
         hashId: pm.hashId,
       });
     }
+
+    const followups = await checkAndFlagFollowups();
+    offersToNotify.push(...followups);
 
     await sendJobNotification(offersToNotify);
 

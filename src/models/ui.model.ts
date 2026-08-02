@@ -15,4 +15,5 @@ export interface DashboardMetrics {
   approved: number;
   rejected: number;
   pending: number;
+  needsFollowup: number;
 }
