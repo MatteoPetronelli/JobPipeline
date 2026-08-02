@@ -10,7 +10,7 @@ export class JobScraperService {
   private context: BrowserContext | null = null;
   private page: Page | null = null;
 
-  public async initialize(): Promise<void> {
+  public async initialize(headless: boolean = true): Promise<void> {
     const userAgents = [
       "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
       "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
@@ -18,13 +18,22 @@ export class JobScraperService {
     ];
     const userAgent = userAgents[Math.floor(Math.random() * userAgents.length)];
 
-    this.browser = await chromium.launch({ headless: true });
+    this.browser = await chromium.launch({ headless });
     this.context = await this.browser.newContext({
       userAgent,
       locale: "fr-FR",
       timezoneId: "Europe/Paris",
     });
     this.page = await this.context.newPage();
+
+    await this.page.route("**/*", (route) => {
+      const type = route.request().resourceType();
+      if (["image", "stylesheet", "font", "media", "other"].includes(type)) {
+        route.abort();
+      } else {
+        route.continue();
+      }
+    });
   }
 
   public async close(): Promise<void> {
@@ -130,15 +139,6 @@ export class JobScraperService {
           console.warn("FAILED_TEMPORARY");
           break;
         }
-
-        await this.page.evaluate(() => {
-          const scripts = document.querySelectorAll("script");
-          const styles = document.querySelectorAll("style");
-          const images = document.querySelectorAll("img");
-          scripts.forEach((s) => s.remove());
-          styles.forEach((s) => s.remove());
-          images.forEach((i) => i.remove());
-        });
 
         const descriptionElement = await this.page.$(
           '#jobDescriptionText, [class*="job-description"], div[data-testid="jobDescriptionText"]',
@@ -268,15 +268,6 @@ export class JobScraperService {
         }
 
         await this.page.waitForTimeout(1000);
-
-        await this.page.evaluate(() => {
-          const scripts = document.querySelectorAll("script");
-          const styles = document.querySelectorAll("style");
-          const images = document.querySelectorAll("img");
-          scripts.forEach((s) => s.remove());
-          styles.forEach((s) => s.remove());
-          images.forEach((i) => i.remove());
-        });
 
         const descriptionElement = await this.page.$(
           '[data-testid="job-section-description"], [class*="description"]',

@@ -39,7 +39,10 @@ const run = async () => {
 
       pendingZaiOffers.push({
         id: hashId,
-        description: offer.description,
+        description:
+          offer.description ??
+          (offer as RawJobOffer & { rawDescription?: string }).rawDescription ??
+          "",
         offer,
       });
     }

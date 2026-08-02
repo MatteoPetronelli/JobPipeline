@@ -10,6 +10,10 @@ const envSchema = z.object({
   GMAIL_CLIENT_SECRET: z.string().min(1),
   GMAIL_REFRESH_TOKEN: z.string().min(1),
   GMAIL_USER_EMAIL: z.string().min(1),
+  SCRAPE_QUERY: z.string().optional(),
+  SCRAPE_QUERIES: z.string().optional(),
+  SCRAPE_MAX_PAGES: z.string().optional(),
+  HEADLESS: z.string().optional(),
 });
 
 const result = envSchema.safeParse(process.env);
