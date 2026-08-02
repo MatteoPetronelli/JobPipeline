@@ -10,6 +10,8 @@ export interface ZaiFilterResponse {
     id: string;
     approved: boolean;
     reason: string;
+    techStack: string[];
+    confidenceScore: number;
   }[];
 }
 

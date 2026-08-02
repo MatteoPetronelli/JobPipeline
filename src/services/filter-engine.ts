@@ -2,6 +2,7 @@ import axios from "axios";
 import crypto from "crypto";
 import fs from "fs/promises";
 import path from "path";
+import { z } from "zod";
 import { RawJobOffer, ZaiFilterResponse } from "../models/types.js";
 import { dbGet, dbRun } from "../db/database.js";
 
@@ -10,6 +11,25 @@ const EXCLUSION_REGEX =
   /(master|bac\+5|bac\+4|m1|m2|école d'ingénieur|stage|cdi|php|symfony|openclassrooms|simplon|epitech|canada)/i;
 const INITIAL_BACKOFF = 10000;
 const MAX_RETRIES = 3;
+
+const ZaiOutputSchema = z.object({
+  results: z.array(
+    z.object({
+      id: z.string(),
+      approved: z.boolean(),
+      reason: z.string(),
+      techStack: z.array(z.string()).default([]),
+      confidenceScore: z.number().min(0).max(100).default(50),
+    }),
+  ),
+});
+
+function cleanJsonContent(rawText: string): string {
+  return rawText
+    .replace(/^```(?:json)?\s*/i, "")
+    .replace(/\s*```$/, "")
+    .trim();
+}
 
 export class FilterEngine {
   public generateHashId(url: string, company: string): string {
@@ -37,19 +57,27 @@ export class FilterEngine {
     return null;
   }
 
+  private getMockResponse(
+    offers: { id: string; description: string }[],
+  ): ZaiFilterResponse {
+    return {
+      results: offers.map((offer) => ({
+        id: offer.id,
+        approved: true,
+        reason: "Heuristic Mock Fallback",
+        techStack: [],
+        confidenceScore: 50,
+      })),
+    };
+  }
+
   public async callZaiBatchFilter(
     offers: { id: string; description: string }[],
   ): Promise<ZaiFilterResponse> {
     const apiKey = process.env.ZAI_API_KEY;
     if (!apiKey || apiKey.includes("mock") || apiKey === "fake") {
       await new Promise((res) => setTimeout(res, 500));
-      return {
-        results: offers.map((offer) => ({
-          id: offer.id,
-          approved: true,
-          reason: "Matches Fullstack requirements",
-        })),
-      };
+      return this.getMockResponse(offers);
     }
 
     const templatePath = path.resolve(
@@ -59,11 +87,11 @@ export class FilterEngine {
     const templateContent = await fs.readFile(templatePath, "utf-8");
 
     const payload = {
-      model: "glm-5.2",
+      model: process.env.ZAI_MODEL || "glm-5.2",
       messages: [
         {
           role: "system",
-          content: `You are a strict job filter. Use this rule template: ${templateContent}. Reply strictly with JSON matching { "results": [ { "id": "string", "approved": boolean, "reason": "string" } ] }.`,
+          content: `You are a strict job filter. Use this rule template: ${templateContent}. Reply strictly with JSON matching { "results": [ { "id": "string", "approved": boolean, "reason": "string", "techStack": ["string"], "confidenceScore": 50 } ] }.`,
         },
         {
           role: "user",
@@ -80,26 +108,50 @@ export class FilterEngine {
       try {
         const response = await axios.post(ZAI_API_URL, payload, {
           headers: {
-            Authorization: `Bearer ${process.env.ZAI_API_KEY}`,
+            Authorization: `Bearer ${apiKey}`,
             "Content-Type": "application/json",
           },
         });
 
         const content = response.data.choices[0].message.content;
-        return JSON.parse(content) as ZaiFilterResponse;
+        const sanitized = cleanJsonContent(content);
+
+        let parsedData;
+        try {
+          parsedData = JSON.parse(sanitized);
+        } catch {
+          console.warn("JSON Parse Failed. Falling back to mock evaluator.");
+          return this.getMockResponse(offers);
+        }
+
+        const parsed = ZaiOutputSchema.safeParse(parsedData);
+        if (!parsed.success) {
+          console.warn(
+            "Z.ai Output Validation Failed. Falling back to mock evaluator.",
+          );
+          return this.getMockResponse(offers);
+        }
+
+        return parsed.data as ZaiFilterResponse;
       } catch (error: unknown) {
         if (axios.isAxiosError(error) && error.response?.status === 429) {
           attempt++;
-          if (attempt >= MAX_RETRIES)
-            throw new Error("MAX_RETRIES_EXCEEDED", { cause: error });
+          if (attempt >= MAX_RETRIES) {
+            console.warn(
+              "MAX_RETRIES_EXCEEDED. Falling back to mock evaluator.",
+            );
+            return this.getMockResponse(offers);
+          }
           await new Promise((res) => setTimeout(res, delay));
           delay *= 2;
         } else {
-          throw error;
+          console.warn("ZAI_API_ERROR. Falling back to mock evaluator.");
+          return this.getMockResponse(offers);
         }
       }
     }
-    throw new Error("UNEXPECTED_ERROR");
+
+    return this.getMockResponse(offers);
   }
 
   public async persistJobStatus(
