@@ -3,6 +3,7 @@
 import { useEffect, useTransition } from "react";
 import { JobRecord } from "../models/ui.model.js";
 import { updateJobStatusAction } from "../app/actions.js";
+import PitchGenerator from "./PitchGenerator.js";
 
 export default function JobDetailDrawer({
   job,
@@ -147,6 +148,8 @@ export default function JobDetailDrawer({
                 <p>Updated: {new Date(job.updatedAt).toLocaleString()}</p>
               </div>
             </div>
+
+            <PitchGenerator job={job} onStatusChange={handleStatusChange} />
           </div>
         </div>
       </div>
