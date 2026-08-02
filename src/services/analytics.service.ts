@@ -26,7 +26,7 @@ export function getPipelineAnalytics(jobs: JobRecord[]): PipelineAnalytics {
   const offerCount = jobs.filter((j) => j.status === "OFFER").length;
 
   const rejectedCount = jobs.filter((j) =>
-    ["ARCHIVED", "REJECTED_BY_CODE"].includes(j.status),
+    ["ARCHIVED", "REJECTED"].includes(j.status),
   ).length;
 
   const needsFollowupCount = jobs.filter(

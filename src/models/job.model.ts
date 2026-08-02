@@ -13,8 +13,8 @@ export const jobSchema = z.object({
     .enum([
       "NEW",
       "PENDING_REVIEW",
-      "APPROVED_BY_ZAI",
-      "REJECTED_BY_CODE",
+      "APPROVED",
+      "REJECTED",
       "HIGH_MATCH",
       "APPLIED",
       "INTERVIEW",

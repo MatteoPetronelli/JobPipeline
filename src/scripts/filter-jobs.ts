@@ -26,12 +26,26 @@ const run = async () => {
       const isProcessed = await engine.isJobProcessed(hashId);
       if (isProcessed) continue;
 
+      const isDuplicate = await engine.isDuplicateJob(
+        offer.title,
+        offer.company,
+      );
+      if (isDuplicate) {
+        await engine.persistJobStatus(
+          hashId,
+          offer,
+          "REJECTED",
+          "Duplicate job title and company",
+        );
+        continue;
+      }
+
       const codeFilterReason = engine.applyCodeFilter(offer);
       if (codeFilterReason) {
         await engine.persistJobStatus(
           hashId,
           offer,
-          "REJECTED_BY_CODE",
+          "REJECTED",
           codeFilterReason,
         );
         continue;
@@ -60,10 +74,17 @@ const run = async () => {
         const item = batch.find((b) => b.id === result.id);
         if (!item) continue;
 
-        const status = result.approved ? "APPROVED_BY_ZAI" : "REJECTED_BY_ZAI";
+        const status = result.approved ? "APPROVED" : "REJECTED";
         const reason = result.approved ? null : result.reason;
+        const generatedPrompt = result.approved ? result.reason : null;
 
-        await engine.persistJobStatus(result.id, item.offer, status, reason);
+        await engine.persistJobStatus(
+          result.id,
+          item.offer,
+          status,
+          reason,
+          generatedPrompt,
+        );
       }
     }
   } catch {

@@ -75,6 +75,7 @@ async function main(): Promise<void> {
       title: job.jobTitle,
       company: job.companyName,
       description: job.rawDescription,
+      location: job.location,
     }));
 
     const outputDir = path.join(process.cwd(), "data");

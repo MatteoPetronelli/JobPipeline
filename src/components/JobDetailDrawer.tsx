@@ -37,8 +37,8 @@ export default function JobDetailDrawer({
   const statuses = [
     "NEW",
     "PENDING_REVIEW",
-    "APPROVED_BY_ZAI",
-    "REJECTED_BY_CODE",
+    "APPROVED",
+    "REJECTED",
     "HIGH_MATCH",
     "APPLIED",
     "NEEDS_FOLLOWUP",

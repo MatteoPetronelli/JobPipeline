@@ -26,9 +26,9 @@ export default function DashboardClient({
 
     const matchesTab =
       activeTab === "ALL" ||
-      (activeTab === "APPROVED" && job.status === "APPROVED_BY_ZAI") ||
+      (activeTab === "APPROVED" && job.status === "APPROVED") ||
       (activeTab === "PENDING" && job.status === "PENDING_REVIEW") ||
-      (activeTab === "REJECTED" && job.status === "REJECTED_BY_CODE") ||
+      (activeTab === "REJECTED" && job.status === "REJECTED") ||
       (activeTab === "FOLLOWUP" && job.status === "NEEDS_FOLLOWUP");
 
     return matchesSearch && matchesTab;

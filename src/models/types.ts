@@ -3,6 +3,7 @@ export interface RawJobOffer {
   title: string;
   company: string;
   description: string;
+  location?: string;
 }
 
 export interface ZaiFilterResponse {
@@ -18,8 +19,8 @@ export interface ZaiFilterResponse {
 export type JobStatus =
   | "NEW"
   | "PENDING_REVIEW"
-  | "APPROVED_BY_ZAI"
-  | "REJECTED_BY_CODE"
+  | "APPROVED"
+  | "REJECTED"
   | "HIGH_MATCH"
   | "APPLIED"
   | "INTERVIEW"

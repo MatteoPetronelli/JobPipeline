@@ -22,7 +22,7 @@ export async function runPipeline(): Promise<void> {
 
     const rawOffers = await getFilteredOffers({});
     const approvedOffers = rawOffers.filter(
-      (o) => o.status === "APPROVED_BY_ZAI",
+      (o) => o.status === "APPROVED",
     );
 
     let matchedCount = 0;

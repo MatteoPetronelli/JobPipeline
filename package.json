@@ -12,6 +12,7 @@
     "lint:fix": "prettier --write \"src/**/*.ts\" && eslint --fix \"src/**/*.ts\"",
     "db:validate": "tsx src/scripts/db-validate.ts",
     "db:init": "tsx src/scripts/db-init.ts",
+    "db:reset": "tsx src/scripts/reset-db.ts",
     "env:verify": "tsx src/scripts/env-verify.ts",
     "pipeline": "tsx src/scripts/run-pipeline.ts"
   },

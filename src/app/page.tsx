@@ -13,10 +13,10 @@ export default async function DashboardPage() {
     await Promise.all([
       dbAll<{ count: number }>("SELECT COUNT(*) as count FROM jobs"),
       dbAll<{ count: number }>(
-        "SELECT COUNT(*) as count FROM jobs WHERE status = 'APPROVED_BY_ZAI'",
+        "SELECT COUNT(*) as count FROM jobs WHERE status = 'APPROVED'",
       ),
       dbAll<{ count: number }>(
-        "SELECT COUNT(*) as count FROM jobs WHERE status = 'REJECTED_BY_CODE'",
+        "SELECT COUNT(*) as count FROM jobs WHERE status = 'REJECTED'",
       ),
       dbAll<{ count: number }>(
         "SELECT COUNT(*) as count FROM jobs WHERE status = 'PENDING_REVIEW'",

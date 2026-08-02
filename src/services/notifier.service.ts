@@ -15,7 +15,7 @@ export async function sendJobNotification(offers: JobOffer[]): Promise<void> {
   const validOffers = offers.filter(
     (o) =>
       o.status === "HIGH_MATCH" ||
-      o.status === "APPROVED_BY_ZAI" ||
+      o.status === "APPROVED" ||
       o.status === "NEEDS_FOLLOWUP",
   );
 
