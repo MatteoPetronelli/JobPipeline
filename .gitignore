@@ -14,3 +14,7 @@ out/
 build/
 next-env.d.ts
 .vercel/
+
+# Data outputs
+data/
+scratch_*.js
