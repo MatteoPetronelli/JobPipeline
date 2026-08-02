@@ -24,24 +24,44 @@ async function main(): Promise<void> {
     const uniqueJobs: Job[] = [];
     const seenHashIds = new Set<string>();
 
+    const indeedResults: Job[][] = [];
     for (let i = 0; i < queries.length; i++) {
       const query = queries[i];
-
-      let indeedJobs: Job[] = [];
+      let jobs: Job[] = [];
       try {
-        indeedJobs = await scraper.scrapeIndeed(query, maxPages);
+        jobs = await scraper.scrapeIndeed(query, maxPages);
       } catch (error) {
         console.error("ERROR_SCRAPING_INDEED", error);
+        if (error instanceof Error && error.message === "CloudflareBlocked") break;
+        if (error instanceof Error && error.message.includes("browser has been closed")) process.exit(1);
+        if (error instanceof Error && error.message.includes("Execution context was destroyed")) process.exit(1);
       }
+      indeedResults.push(jobs);
+      if (i < queries.length - 1) {
+        await new Promise((resolve) => setTimeout(resolve, 5000));
+      }
+    }
 
-      let wttjJobs: Job[] = [];
+    const wttjResults: Job[][] = [];
+    for (let i = 0; i < queries.length; i++) {
+      const query = queries[i];
+      let jobs: Job[] = [];
       try {
-        wttjJobs = await scraper.scrapeWelcomeToTheJungle(query, maxPages);
+        jobs = await scraper.scrapeWelcomeToTheJungle(query, maxPages);
       } catch (error) {
         console.error("ERROR_SCRAPING_WTTJ", error);
+        if (error instanceof Error && error.message.includes("browser has been closed")) process.exit(1);
+        if (error instanceof Error && error.message.includes("Execution context was destroyed")) process.exit(1);
       }
+      wttjResults.push(jobs);
+      if (i < queries.length - 1) {
+        await new Promise((resolve) => setTimeout(resolve, 5000));
+      }
+    }
 
-      const allJobs = [...indeedJobs, ...wttjJobs];
+    for (let i = 0; i < queries.length; i++) {
+      const query = queries[i];
+      const allJobs = [...(indeedResults[i] || []), ...(wttjResults[i] || [])];
       let newJobsCount = 0;
 
       for (const job of allJobs) {

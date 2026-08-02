@@ -2,6 +2,8 @@ import { chromium } from "playwright-extra";
 import stealth from "puppeteer-extra-plugin-stealth";
 import { Browser, BrowserContext, Page } from "playwright";
 import { Job } from "../models/job.model.js";
+import os from "os";
+import path from "path";
 
 chromium.use(stealth());
 
@@ -18,30 +20,20 @@ export class JobScraperService {
     ];
     const userAgent = userAgents[Math.floor(Math.random() * userAgents.length)];
 
-    this.browser = await chromium.launch({ headless });
-    this.context = await this.browser.newContext({
+    const userDataDir = path.join(os.tmpdir(), "playwright_user_data");
+    this.context = await chromium.launchPersistentContext(userDataDir, {
+      headless,
       userAgent,
       locale: "fr-FR",
       timezoneId: "Europe/Paris",
     });
-    this.page = await this.context.newPage();
 
-    await this.page.route("**/*", (route) => {
-      const type = route.request().resourceType();
-      if (["image", "stylesheet", "font", "media", "other"].includes(type)) {
-        route.abort();
-      } else {
-        route.continue();
-      }
-    });
+    const pages = this.context.pages();
+    this.page = pages.length > 0 ? pages[0] : await this.context.newPage();
   }
-
   public async close(): Promise<void> {
     if (this.context) {
       await this.context.close();
-    }
-    if (this.browser) {
-      await this.browser.close();
     }
   }
 
@@ -155,7 +147,7 @@ export class JobScraperService {
 
     const jobs: Job[] = [];
     let currentPage = 0;
-    const baseSearchUrl = `https://fr.indeed.com/jobs?q=${encodeURIComponent(searchQuery)}`;
+    const baseSearchUrl = `https://fr.indeed.com/jobs?q=${encodeURIComponent(searchQuery)}&l=78750&radius=25&sort=date`;
 
     while (currentPage < maxPages) {
       const url =
@@ -168,10 +160,23 @@ export class JobScraperService {
       });
       if (response?.status() === 403) {
         console.warn("FAILED_TEMPORARY");
-        break;
+        throw new Error("CloudflareBlocked");
+      }
+
+      const title = await this.page.title();
+      if (
+        title.toLowerCase().includes("just a moment") ||
+        title.toLowerCase().includes("cloudflare")
+      ) {
+        console.warn("CLOUDFLARE_DETECTED");
+        throw new Error("CloudflareBlocked");
       }
 
       await this.page.waitForTimeout(2000);
+      await this.page.evaluate(() =>
+        window.scrollTo(0, document.body.scrollHeight),
+      );
+      await this.page.waitForTimeout(1500);
 
       const jobCards = await this.page.$$(
         'a[id^="job_"], div.job_seen_beacon, td.resultContent',
@@ -183,12 +188,12 @@ export class JobScraperService {
       for (const card of jobCards) {
         try {
           const titleElement = await card.$(
-            'h2.jobTitle span, h3.jobTitle span, [class*="jobTitle"] span, [role="heading"] span',
+            'h2.jobTitle span, h3.jobTitle span, [class*="jobTitle"] span, [role="heading"] span, h2.jobTitle, .jobTitle',
           );
-          const titleText = await titleElement?.textContent();
+          let titleText = await titleElement?.textContent();
 
           const companyElement = await card.$(
-            'span[data-testid="company-name"], [data-company-name="true"], span.companyName',
+            'span[data-testid="company-name"], [data-company-name="true"], span.companyName, [data-testid="text-company"]',
           );
           const companyText = await companyElement?.textContent();
 
@@ -207,6 +212,12 @@ export class JobScraperService {
             }
           }
           const href = await linkElement?.getAttribute("href");
+
+          if (!titleText && linkElement) {
+            const ariaLabel = await linkElement.getAttribute("aria-label");
+            const spanText = await linkElement.$eval("span", (el) => el.textContent).catch(() => "");
+            titleText = spanText || ariaLabel || await linkElement.textContent();
+          }
 
           if (!titleText || !companyText || !href) {
             console.warn(
@@ -248,7 +259,15 @@ export class JobScraperService {
 
         if (response?.status() === 403) {
           console.warn("FAILED_TEMPORARY");
-          break;
+          throw new Error("CloudflareBlocked");
+        }
+
+        const title = await this.page.title();
+        if (
+          title.toLowerCase().includes("just a moment") ||
+          title.toLowerCase().includes("cloudflare")
+        ) {
+          throw new Error("CloudflareBlocked");
         }
 
         const ldJsonScripts = await this.page.$$eval(
@@ -301,7 +320,7 @@ export class JobScraperService {
 
     const jobs: Job[] = [];
     let currentPage = 1;
-    const baseSearchUrl = `https://www.welcometothejungle.com/fr/jobs?query=${encodeURIComponent(searchQuery)}`;
+    const baseSearchUrl = `https://www.welcometothejungle.com/fr/jobs?query=${encodeURIComponent(searchQuery)}&aroundQuery=Paris`;
 
     while (currentPage <= maxPages) {
       const url =

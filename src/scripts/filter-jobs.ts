@@ -2,7 +2,7 @@ import fs from "fs/promises";
 import path from "path";
 import dotenv from "dotenv";
 import { FilterEngine } from "../services/filter-engine.js";
-import { closeDb } from "../db/database.js";
+import { dbRun, closeDb } from "../db/database.js";
 import { RawJobOffer } from "../models/types.js";
 
 dotenv.config();
@@ -61,30 +61,45 @@ const run = async () => {
       });
     }
 
-    for (let i = 0; i < pendingZaiOffers.length; i += 10) {
-      const batch = pendingZaiOffers.slice(i, i + 10);
+    for (let i = 0; i < pendingZaiOffers.length; i += 20) {
+      const batch = pendingZaiOffers.slice(i, i + 20);
       const batchPayload = batch.map((b) => ({
-        id: b.id,
+        hashId: b.id,
+        title: b.offer.title,
+        company: b.offer.company,
+        location: b.offer.location,
         description: b.description,
       }));
 
-      const zaiResponse = await engine.callZaiBatchFilter(batchPayload);
+      console.log(
+        `[Z.ai BATCH] Dispatched batch of ${batch.length} jobs in 1 API call...`,
+      );
+      const zaiResponse = await engine.evaluateJobBatch(batchPayload);
 
-      for (const result of zaiResponse.results) {
-        const item = batch.find((b) => b.id === result.id);
-        if (!item) continue;
+      await dbRun("BEGIN TRANSACTION");
+      try {
+        for (const result of zaiResponse.results) {
+          const item = batch.find((b) => b.id === result.hashId);
+          if (!item) continue;
 
-        const status = result.approved ? "APPROVED" : "REJECTED";
-        const reason = result.approved ? null : result.reason;
-        const generatedPrompt = result.approved ? result.reason : null;
+          const status = result.approved ? "APPROVED" : "REJECTED";
+          const reason = result.approved ? null : result.reason;
+          const generatedPrompt = result.approved
+            ? result.pitch || result.reason
+            : null;
 
-        await engine.persistJobStatus(
-          result.id,
-          item.offer,
-          status,
-          reason,
-          generatedPrompt,
-        );
+          await engine.persistJobStatus(
+            result.hashId,
+            item.offer,
+            status,
+            reason,
+            generatedPrompt,
+          );
+        }
+        await dbRun("COMMIT");
+      } catch (err) {
+        await dbRun("ROLLBACK");
+        throw err;
       }
     }
   } catch {

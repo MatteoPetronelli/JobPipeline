@@ -8,11 +8,11 @@ export interface RawJobOffer {
 
 export interface ZaiFilterResponse {
   results: {
-    id: string;
+    hashId: string;
     approved: boolean;
     reason: string;
-    techStack: string[];
-    confidenceScore: number;
+    matchScore: number;
+    pitch?: string;
   }[];
 }
 

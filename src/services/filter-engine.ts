@@ -15,11 +15,11 @@ const MAX_RETRIES = 3;
 const ZaiOutputSchema = z.object({
   results: z.array(
     z.object({
-      id: z.string(),
+      hashId: z.string(),
       approved: z.boolean(),
       reason: z.string(),
-      techStack: z.array(z.string()).default([]),
-      confidenceScore: z.number().min(0).max(100).default(50),
+      matchScore: z.number().min(0).max(100).default(50),
+      pitch: z.string().optional(),
     }),
   ),
 });
@@ -76,17 +76,33 @@ export class FilterEngine {
     );
   }
 
+  public isNonTechSalesRole(title: string, description: string): boolean {
+    const salesRegex =
+      /(développeur commercial|développeuse commerciale|business developer|business dev|commercial\b|téléprospecteur|chargé de clientèle|vente\b|prospection|chef de secteur|négociateur)/i;
+    if (salesRegex.test(title) || salesRegex.test(description)) {
+      return true;
+    }
+    const techRegex =
+      /(fullstack|frontend|backend|web|software|mobile|devops|data|python|c#|react|node|java|développeur|developer|ingénieur|engineer|tech|informatique|it\b)/i;
+    if (!techRegex.test(title) && !techRegex.test(description)) {
+      return true;
+    }
+    return false;
+  }
+
   public isSchoolOrTraining(
     title: string,
     company: string,
     description: string,
   ): boolean {
     const schoolRegex =
-      /(cfa|studi|openclassrooms|cesi|pigier|wild code school|grande école|esci|formations|campus|efrei|iscod|esgi|epitech)/i;
+      /(cfa|studi|openclassrooms|cesi|pigier|wild code school|grande école|esci|formations|campus|efrei|iscod|esgi|epitech|cloud campus|galileo global education|rocket school|enaco|esgci|pst&b|developers institute)/i;
     if (schoolRegex.test(company) || schoolRegex.test(title)) return true;
 
+    if (/^alternance$/i.test(company.trim())) return true;
+
     const phraseRegex =
-      /(rejoignez notre école|formation financée|titre rncp)/i;
+      /(rejoignez notre école|formation financée|titre rncp|recherche pour son entreprise|recherche pour son entreprise collaboratrice|recherche pour son entreprise partenaire|aucun frais ne sera à la charge|aucun frais n'est à la charge|rythme : |2 jours école|pour postuler, vous devez être éligible à l'apprentissage)/i;
     if (phraseRegex.test(description) || phraseRegex.test(title)) return true;
 
     return false;
@@ -114,7 +130,7 @@ export class FilterEngine {
       }
 
       const provincialRegex =
-        /(strasbourg|lyon|lille|nantes|bordeaux|toulouse|marseille|rennes|montpellier|67|69|59|44|31|13|33|34|35)/i;
+        /(strasbourg|lyon|lille|nantes|bordeaux|toulouse|marseille|rennes|montpellier|67|69|59|44|31|13|33|34|35|77|seine-et-marne|marne-la-vallée|meaux|melun|provins)/i;
       if (provincialRegex.test(locationStr)) {
         return false;
       }
@@ -131,35 +147,44 @@ export class FilterEngine {
       return "REJECTED";
     }
 
+    if (this.isNonTechSalesRole(offer.title, offer.description)) {
+      return "REJECTED_NON_TECH_SALES_ROLE";
+    }
+
     if (
       this.isSchoolOrTraining(offer.title, offer.company, offer.description)
     ) {
-      return "REJECTED_SCHOOL_OR_TRAINING";
+      return "REJECTED_SCHOOL_PROXY";
     }
 
     if (!this.isAcceptableLocation(offer.location, offer.description)) {
-      return "Lieu de travail hors Île-de-France et non 100% remote";
+      return "REJECTED_LOCATION_EXCEEDS_COMMUTE";
     }
 
     return null;
   }
 
   private getMockResponse(
-    offers: { id: string; description: string }[],
+    offers: { hashId: string; description: string }[],
   ): ZaiFilterResponse {
     return {
       results: offers.map((offer) => ({
-        id: offer.id,
+        hashId: offer.hashId,
         approved: true,
         reason: "Heuristic Mock Fallback",
-        techStack: [],
-        confidenceScore: 50,
+        matchScore: 50,
       })),
     };
   }
 
-  public async callZaiBatchFilter(
-    offers: { id: string; description: string }[],
+  public async evaluateJobBatch(
+    offers: {
+      hashId: string;
+      title: string;
+      company: string;
+      location?: string;
+      description: string;
+    }[],
   ): Promise<ZaiFilterResponse> {
     const apiKey = process.env.ZAI_API_KEY;
     if (!apiKey || apiKey.includes("mock") || apiKey === "fake") {
@@ -178,7 +203,7 @@ export class FilterEngine {
       messages: [
         {
           role: "system",
-          content: `You are a strict job filter. Use this rule template: ${templateContent}. CRITICAL LOCATION RULE: The candidate lives in Mareil-Marly (Île-de-France, 78). Reject any job physically located outside Île-de-France (e.g. Strasbourg, Lyon, Nantes, Lille, etc.) EVEN IF partial remote (1 or 2 days/week) is offered. ONLY approve non-IDF jobs if they are explicitly 100% Full Remote / Télétravail total. Distinguish between the company's general list of national offices and the ACTUAL target location of the offer. REJECT any job posting submitted by a training center, school, or CFA advertising a degree/course instead of a genuine employer offering a direct hiring contract. Reply strictly with JSON matching { "results": [ { "id": "string", "approved": boolean, "reason": "string", "techStack": ["string"], "confidenceScore": 50 } ] }.`,
+          content: `You are a strict job filter. Use this rule template: ${templateContent}. Evaluate the provided array of job postings (up to 20 jobs). Return a single strictly valid JSON array of evaluation objects. Each object in the array must contain: { hashId: string, approved: boolean, reason: string, matchScore: number, pitch?: string }. CRITICAL RULE 1: 'Développeur commercial' is a SALES/COMMERCIAL job, NOT a Software Engineer. REJECT IMMEDIATELY. CRITICAL RULE 2: If the poster is a school or institute recruiting on behalf of a third-party partner ('recherche pour son entreprise partenaire'), REJECT IMMEDIATELY. CRITICAL LOCATION RULE: The candidate lives in Mareil-Marly (Île-de-France, 78). Reject any job physically located outside Île-de-France (e.g. Strasbourg, Lyon, Nantes, Lille, etc.) EVEN IF partial remote (1 or 2 days/week) is offered. ONLY approve non-IDF jobs if they are explicitly 100% Full Remote / Télétravail total. Distinguish between the company's general list of national offices and the ACTUAL target location of the offer. REJECT any job posting submitted by a training center, school, or CFA advertising a degree/course instead of a genuine employer offering a direct hiring contract. Reply strictly with JSON matching { "results": [ { "hashId": "string", "approved": boolean, "reason": "string", "matchScore": 50, "pitch": "string" } ] }.`,
         },
         {
           role: "user",

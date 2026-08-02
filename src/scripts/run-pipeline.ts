@@ -21,9 +21,7 @@ export async function runPipeline(): Promise<void> {
     execSync("npx tsx src/scripts/filter-jobs.ts", { stdio: "inherit" });
 
     const rawOffers = await getFilteredOffers({});
-    const approvedOffers = rawOffers.filter(
-      (o) => o.status === "APPROVED",
-    );
+    const approvedOffers = rawOffers.filter((o) => o.status === "APPROVED");
 
     let matchedCount = 0;
     const offersToNotify: JobOffer[] = [];
