@@ -6,6 +6,7 @@ dist/
 .backups/
 .logs/
 *.tsbuildinfo
+client_secret_**.json
 
 # Next.js
 .next/
