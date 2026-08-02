@@ -6,6 +6,7 @@ import MetricsGrid from "./MetricsGrid.js";
 import JobsTable from "./JobsTable.js";
 import ExportButton from "./ExportButton.js";
 import JobDetailDrawer from "./JobDetailDrawer.js";
+import AnalyticsFunnel from "./AnalyticsFunnel.js";
 
 export default function DashboardClient({
   initialJobs,
@@ -40,6 +41,8 @@ export default function DashboardClient({
   return (
     <div className="space-y-6">
       <MetricsGrid metrics={initialMetrics} />
+      
+      <AnalyticsFunnel jobs={initialJobs} />
 
       <div className="flex flex-col xl:flex-row gap-4 justify-between items-center bg-white dark:bg-slate-900 p-4 rounded-lg shadow-sm border border-slate-200 dark:border-slate-800">
         <div className="flex flex-wrap gap-2">
