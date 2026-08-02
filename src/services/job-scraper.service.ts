@@ -183,7 +183,7 @@ export class JobScraperService {
       for (const card of jobCards) {
         try {
           const titleElement = await card.$(
-            'h2.jobTitle span, h2.jobTitle, [role="heading"] span',
+            'h2.jobTitle span, h3.jobTitle span, [class*="jobTitle"] span, [role="heading"] span',
           );
           const titleText = await titleElement?.textContent();
 
